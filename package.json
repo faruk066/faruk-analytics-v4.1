@@ -1,8 +1,10 @@
 {
-  "name": "faruk-analytics-v5.0",
-  "version": "1.0.0",
+  "name": "faruk-analytics",
+  "version": "5.2.0",
   "type": "module",
-  "main": "index.js",
+  "engines": {
+    "node": "18.x"
+  },
   "dependencies": {
     "node-fetch": "^3.3.2",
     "jspdf": "^2.5.1"
