@@ -1,14 +1,13 @@
-import fetch from "node-fetch";
-
 export default async function handler(req, res) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Yalnızca POST desteklenir." });
+  }
+
   try {
-    const { text } = await req.json ? await req.json() : req.body;
-
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) throw new Error("Gemini API key missing");
-
+    const { text } = req.body;
+    const apiKey = process.env.GOOGLE_API_KEY;
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -17,11 +16,10 @@ export default async function handler(req, res) {
         })
       }
     );
-
     const data = await response.json();
     return res.status(200).json(data);
-  } catch (error) {
-    console.error("Gemini API Error:", error);
-    return res.status(500).json({ error: error.message });
+  } catch (err) {
+    console.error("Gemini API hatası:", err);
+    return res.status(500).json({ error: "Analiz başarısız" });
   }
 }
