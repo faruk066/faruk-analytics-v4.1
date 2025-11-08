@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Faruk Analytics v5.0 — Yorum Analiz Paneli</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex flex-col items-center p-6">
+
+  <h1 class="text-3xl font-bold text-blue-400 mb-4">🧠 Faruk Analytics</h1>
+  <textarea id="commentInput" rows="6" placeholder="Yorumları veya işletme linkini gir..."
+    class="w-full max-w-3xl p-3 rounded-lg bg-gray-800 border border-gray-700 text-white"></textarea>
+
+  <div class="flex gap-3 mt-3">
+    <button id="analyzeBtn" class="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded-lg font-semibold">Analiz Et</button>
+    <button id="clearBtn" class="bg-gray-600 hover:bg-gray-700 px-6 py-2 rounded-lg font-semibold">Temizle</button>
+    <button id="pdfBtn" class="bg-green-600 hover:bg-green-700 px-6 py-2 rounded-lg font-semibold hidden">PDF Oluştur</button>
+  </div>
+
+  <div id="output" class="w-full max-w-3xl mt-6 bg-gray-800 p-5 rounded-lg hidden"></div>
+
+  <script>
+    const input = document.getElementById("commentInput");
+    const out = document.getElementById("output");
+    const analyzeBtn = document.getElementById("analyzeBtn");
+    const clearBtn = document.getElementById("clearBtn");
+    const pdfBtn = document.getElementById("pdfBtn");
+
+    // ---- Analiz Et ----
+    analyzeBtn.onclick = async () => {
+      const text = input.value.trim();
+      if (!text) return alert("Lütfen bir yorum veya bağlantı girin.");
+      out.innerHTML = "🔍 Analiz yapılıyor...";
+      out.classList.remove("hidden");
+      pdfBtn.classList.add("hidden");
+
+      try {
+        // 1️⃣ Eğer URL girilmişse yorumları getir
+        let reviewsData = null;
+        if (text.startsWith("http")) {
+          const res = await fetch(`/api/fetchReviews?url=${encodeURIComponent(text)}`);
+          reviewsData = await res.json();
+          if (reviewsData.error) throw new Error(reviewsData.error);
+        }
+
+        // 2️⃣ Analiz isteğini gönder
+        const analyzeText = reviewsData
+          ? reviewsData.reviews.map(r => `${r.user}: ${r.text}`).join("\n")
+          : text;
+
+        const res = await fetch("/api/gemini", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: analyzeText })
+        });
+        const data = await res.json();
+
+        if (!data.candidates) throw new Error("Geçersiz API yanıtı");
+        const content = data.candidates[0].content.parts[0].text;
+
+        out.innerHTML = `<pre class="whitespace-pre-wrap">${content}</pre>`;
+        pdfBtn.classList.remove("hidden");
+
+      } catch (err) {
+        out.innerHTML = `❌ Analiz başarısız: ${err.message}`;
+      }
+    };
+
+    // ---- Temizle ----
+    clearBtn.onclick = () => {
+      input.value = "";
+      out.innerHTML = "";
+      out.classList.add("hidden");
+      pdfBtn.classList.add("hidden");
+    };
+
+    // ---- PDF oluştur ----
+    pdfBtn.onclick = async () => {
+      try {
+        const summary = out.textContent.slice(0, 800);
+        const res = await fetch("/api/generatePDF", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            summary,
+            keywords: [{ word: "müşteri", sentiment: "pozitif" }]
+          })
+        });
+        if (!res.ok) throw new Error("PDF oluşturma başarısız");
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "YorumAnalizi.pdf";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      } catch (err) {
+        alert("❌ PDF hatası: " + err.message);
+      }
+    };
+  </script>
+</body>
+</html>
