@@ -12,6 +12,8 @@
   "dependencies": {
     "node-fetch": "^3.3.2",
     "jspdf": "^2.5.1",
-    "cheerio": "^1.0.0-rc.12"
+    "cheerio": "^1.0.0-rc.12",
+    "puppeteer-core": "^21.6.0",
+    "@sparticuz/chromium": "^119.0.2"
   }
 }
