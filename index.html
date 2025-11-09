@@ -1,105 +1,451 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Faruk Analytics v5.0 — Yorum Analiz Paneli</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-900 text-white min-h-screen flex flex-col items-center p-6">
-
-  <h1 class="text-3xl font-bold text-blue-400 mb-4">🧠 Faruk Analytics</h1>
-  <textarea id="commentInput" rows="6" placeholder="Yorumları veya işletme linkini gir..."
-    class="w-full max-w-3xl p-3 rounded-lg bg-gray-800 border border-gray-700 text-white"></textarea>
-
-  <div class="flex gap-3 mt-3">
-    <button id="analyzeBtn" class="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded-lg font-semibold">Analiz Et</button>
-    <button id="clearBtn" class="bg-gray-600 hover:bg-gray-700 px-6 py-2 rounded-lg font-semibold">Temizle</button>
-    <button id="pdfBtn" class="bg-green-600 hover:bg-green-700 px-6 py-2 rounded-lg font-semibold hidden">PDF Oluştur</button>
-  </div>
-
-  <div id="output" class="w-full max-w-3xl mt-6 bg-gray-800 p-5 rounded-lg hidden"></div>
-
-  <script>
-    const input = document.getElementById("commentInput");
-    const out = document.getElementById("output");
-    const analyzeBtn = document.getElementById("analyzeBtn");
-    const clearBtn = document.getElementById("clearBtn");
-    const pdfBtn = document.getElementById("pdfBtn");
-
-    // ---- Analiz Et ----
-    analyzeBtn.onclick = async () => {
-      const text = input.value.trim();
-      if (!text) return alert("Lütfen bir yorum veya bağlantı girin.");
-      out.innerHTML = "🔍 Analiz yapılıyor...";
-      out.classList.remove("hidden");
-      pdfBtn.classList.add("hidden");
-
-      try {
-        // 1️⃣ Eğer URL girilmişse yorumları getir
-        let reviewsData = null;
-        if (text.startsWith("http")) {
-          const res = await fetch(`/api/fetchReviews?url=${encodeURIComponent(text)}`);
-          reviewsData = await res.json();
-          if (reviewsData.error) throw new Error(reviewsData.error);
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Faruk Analytics - Gelişmiş Yorum Analizi</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+        
+        .logo {
+            font-size: 1.2em;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+        }
+        
+        .input-group {
+            margin-bottom: 20px;
+        }
+        
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2a5298;
+        }
+        
+        textarea {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            resize: vertical;
+            min-height: 120px;
+            font-family: inherit;
+            transition: border-color 0.3s;
+        }
+        
+        textarea:focus {
+            outline: none;
+            border-color: #2a5298;
+        }
+        
+        .scraper-options {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .scraper-option {
+            flex: 1;
+            min-width: 200px;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+        }
+        
+        .scraper-option:hover {
+            border-color: #2a5298;
+            background: #f8f9fa;
+        }
+        
+        .scraper-option.active {
+            border-color: #2a5298;
+            background: #e3f2fd;
+        }
+        
+        .scraper-option input[type="radio"] {
+            margin-right: 8px;
+        }
+        
+        .scraper-option .label {
+            font-weight: 600;
+            color: #2a5298;
+            display: block;
+            margin-bottom: 5px;
+        }
+        
+        .scraper-option .description {
+            font-size: 0.85em;
+            color: #666;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            flex: 1;
+            min-width: 150px;
+            padding: 15px 30px;
+            font-size: 16px;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #2a5298 0%, #1e3c72 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(42, 82, 152, 0.3);
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-secondary:hover:not(:disabled) {
+            background: #5a6268;
+        }
+        
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        
+        .btn-success:hover:not(:disabled) {
+            background: #218838;
+        }
+        
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .result {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            border-left: 4px solid #2a5298;
+            white-space: pre-wrap;
+            line-height: 1.6;
+        }
+        
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            border-left: 4px solid #dc3545;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .loading.active {
+            display: block;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #2a5298;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .info-badge {
+            display: inline-block;
+            padding: 5px 10px;
+            background: #e3f2fd;
+            color: #2a5298;
+            border-radius: 15px;
+            font-size: 0.85em;
+            margin-top: 10px;
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+            
+            .button-group {
+                flex-direction: column;
+            }
+            
+            button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><span class="logo">🧠</span> Faruk Analytics</h1>
+            <p>Gelişmiş AI destekli yorum analiz sistemi</p>
+        </div>
+        
+        <div class="card">
+            <div class="input-group">
+                <label for="urlInput">🔗 İncelemek İstediğiniz URL'yi Girin:</label>
+                <textarea 
+                    id="urlInput" 
+                    placeholder="Örnek: https://www.hepsiburada.com/product-name
+https://www.yemeksepeti.com/restaurant
+https://www.trendyol.com/product
+https://maps.google.com/place"
+                ></textarea>
+            </div>
+            
+            <div class="input-group">
+                <label>🛠️ Scraping Yöntemi Seçin:</label>
+                <div class="scraper-options">
+                    <label class="scraper-option active">
+                        <input type="radio" name="scraper" value="basic" checked>
+                        <span class="label">⚡ Hızlı (Cheerio)</span>
+                        <span class="description">Statik HTML - Hızlı</span>
+                    </label>
+                    <label class="scraper-option">
+                        <input type="radio" name="scraper" value="puppeteer">
+                        <span class="label">🌐 Gelişmiş (Puppeteer)</span>
+                        <span class="description">JavaScript render - Yavaş ama etkili</span>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="button-group">
+                <button class="btn-primary" onclick="analyzeReviews()">
+                    🔍 Analiz Et
+                </button>
+                <button class="btn-secondary" onclick="clearResults()">
+                    🗑️ Temizle
+                </button>
+                <button class="btn-success" id="pdfButton" onclick="generatePDF()" disabled>
+                    📄 PDF Oluştur
+                </button>
+            </div>
+            
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Yorumlar çekiliyor ve analiz ediliyor...</p>
+                <p style="font-size: 0.9em; color: #666; margin-top: 10px;">Bu işlem 5-30 saniye sürebilir</p>
+            </div>
+            
+            <div id="result"></div>
+        </div>
+    </div>
 
-        // 2️⃣ Analiz isteğini gönder
-        const analyzeText = reviewsData
-          ? reviewsData.reviews.map(r => `${r.user}: ${r.text}`).join("\n")
-          : text;
-
-        const res = await fetch("/api/gemini", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: analyzeText })
+    <script>
+        let analysisData = null;
+        
+        // Scraper option selection
+        document.querySelectorAll('.scraper-option').forEach(option => {
+            option.addEventListener('click', function() {
+                document.querySelectorAll('.scraper-option').forEach(opt => opt.classList.remove('active'));
+                this.classList.add('active');
+                this.querySelector('input[type="radio"]').checked = true;
+            });
         });
-        const data = await res.json();
+        
+        async function analyzeReviews() {
+            const url = document.getElementById('urlInput').value.trim();
+            const scraperMethod = document.querySelector('input[name="scraper"]:checked').value;
+            const resultDiv = document.getElementById('result');
+            const loading = document.getElementById('loading');
+            const pdfButton = document.getElementById('pdfButton');
+            
+            if (!url) {
+                resultDiv.innerHTML = '<div class="error">❌ Lütfen bir URL girin!</div>';
+                return;
+            }
+            
+            resultDiv.innerHTML = '';
+            loading.classList.add('active');
+            pdfButton.disabled = true;
+            
+            try {
+                // Choose API endpoint based on scraper method
+                const apiEndpoint = scraperMethod === 'puppeteer' 
+                    ? '/api/puppeteerScraper' 
+                    : '/api/fetchReviews';
+                
+                // Fetch reviews
+                const reviewsResponse = await fetch(`${apiEndpoint}?url=${encodeURIComponent(url)}`);
+                const reviewsData = await reviewsResponse.json();
+                
+                if (!reviewsResponse.ok) {
+                    throw new Error(reviewsData.error || 'Yorumlar çekilemedi');
+                }
+                
+                // Analyze with Gemini
+                const analysisResponse = await fetch('/api/gemini', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        text: `Aşağıdaki ${reviewsData.reviewCount} yorumu analiz et:
 
-        if (!data.candidates) throw new Error("Geçersiz API yanıtı");
-        const content = data.candidates[0].content.parts[0].text;
+${JSON.stringify(reviewsData.reviews, null, 2)}
 
-        out.innerHTML = `<pre class="whitespace-pre-wrap">${content}</pre>`;
-        pdfBtn.classList.remove("hidden");
-
-      } catch (err) {
-        out.innerHTML = `❌ Analiz başarısız: ${err.message}`;
-      }
-    };
-
-    // ---- Temizle ----
-    clearBtn.onclick = () => {
-      input.value = "";
-      out.innerHTML = "";
-      out.classList.add("hidden");
-      pdfBtn.classList.add("hidden");
-    };
-
-    // ---- PDF oluştur ----
-    pdfBtn.onclick = async () => {
-      try {
-        const summary = out.textContent.slice(0, 800);
-        const res = await fetch("/api/generatePDF", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            summary,
-            keywords: [{ word: "müşteri", sentiment: "pozitif" }]
-          })
-        });
-        if (!res.ok) throw new Error("PDF oluşturma başarısız");
-        const blob = await res.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "YorumAnalizi.pdf";
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-      } catch (err) {
-        alert("❌ PDF hatası: " + err.message);
-      }
-    };
-  </script>
+Lütfen şunları yap:
+1. Genel duygu analizi (pozitif/negatif/nötr oranları)
+2. Sık tekrar eden kelimeler
+3. En yaygın şikayetler
+4. En çok övülen özellikler
+5. Genel değerlendirme ve öneriler`
+                    })
+                });
+                
+                const analysisResult = await analysisResponse.json();
+                
+                if (!analysisResponse.ok) {
+                    throw new Error(analysisResult.error || 'Analiz başarısız');
+                }
+                
+                // Store data for PDF
+                analysisData = {
+                    url,
+                    source: reviewsData.source,
+                    reviewCount: reviewsData.reviewCount,
+                    method: reviewsData.method || scraperMethod,
+                    reviews: reviewsData.reviews,
+                    analysis: analysisResult
+                };
+                
+                // Display results
+                resultDiv.innerHTML = `
+                    <div class="result">
+                        <strong>📊 Kaynak:</strong> ${reviewsData.source}<br>
+                        <strong>🔢 Toplam Yorum:</strong> ${reviewsData.reviewCount}<br>
+                        <strong>🛠️ Yöntem:</strong> ${reviewsData.method || scraperMethod}<br>
+                        ${reviewsData.warning ? `<div class="info-badge">⚠️ ${reviewsData.warning}</div><br>` : ''}
+                        <hr style="margin: 15px 0; border: none; border-top: 1px solid #ddd;">
+                        <strong>🤖 AI Analizi:</strong><br><br>
+                        ${analysisResult.candidates?.[0]?.content?.parts?.[0]?.text || 'Analiz sonucu alınamadı'}
+                    </div>
+                `;
+                
+                pdfButton.disabled = false;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        ❌ Analiz başarısız: ${error.message}
+                        ${error.suggestion ? `<br><br>💡 ${error.suggestion}` : ''}
+                        ${error.debug ? `<br><br>🔍 Debug: ${JSON.stringify(error.debug)}` : ''}
+                    </div>
+                `;
+            } finally {
+                loading.classList.remove('active');
+            }
+        }
+        
+        function clearResults() {
+            document.getElementById('urlInput').value = '';
+            document.getElementById('result').innerHTML = '';
+            document.getElementById('pdfButton').disabled = true;
+            analysisData = null;
+        }
+        
+        async function generatePDF() {
+            if (!analysisData) return;
+            
+            try {
+                const response = await fetch('/api/generatePDF', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(analysisData)
+                });
+                
+                if (!response.ok) {
+                    throw new Error('PDF oluşturulamadı');
+                }
+                
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `analiz_${Date.now()}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                
+            } catch (error) {
+                alert('PDF oluşturulurken hata: ' + error.message);
+            }
+        }
+    </script>
 </body>
 </html>
