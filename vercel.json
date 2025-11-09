@@ -2,7 +2,7 @@
   "version": 2,
   "builds": [
     { "src": "index.html", "use": "@vercel/static" },
-    { "src": "api/gemini.js", "use": "@vercel/node" }
+    { "src": "api/gemini.js", "use": "@vercel/node" },
 	{ "src": "api/fetchReviews.js", "use": "@vercel/node" }
   ],
   "routes": [
