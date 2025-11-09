@@ -7,10 +7,9 @@ export default async function handler(req, res) {
   const SCRAPER_API_KEY = process.env.SCRAPER_API_KEY;
   
   if (!SCRAPER_API_KEY) {
-    return res.status(500).json({ 
-      error: "ScraperAPI key tanımlanmamış",
-      suggestion: "Vercel Environment Variables'a SCRAPER_API_KEY ekleyin"
-    });
+    console.warn("ScraperAPI key not found, falling back to direct fetch");
+    // Fallback to direct fetch without ScraperAPI
+    return await directFetch(url, res);
   }
 
   try {
@@ -218,6 +217,100 @@ export default async function handler(req, res) {
     return res.status(500).json({ 
       error: "Scraping hatası: " + err.message,
       details: "ScraperAPI ile veri çekilemedi. API limiti dolmuş olabilir veya site erişilemez."
+    });
+  }
+}
+
+// Direct fetch fallback when ScraperAPI key is not available
+async function directFetch(url, res) {
+  try {
+    const domain = new URL(url).hostname;
+    
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7'
+      }
+    });
+    
+    if (!response.ok) {
+      return res.status(200).json({
+        source: domain + " (Demo Mode)",
+        url,
+        reviewCount: 3,
+        reviews: [
+          {
+            user: "Demo Kullanıcı",
+            rating: 4,
+            text: "ScraperAPI key tanımlanmadığı için demo veriler gösteriliyor. Gerçek scraping için Environment Variables'a SCRAPER_API_KEY ekleyin.",
+            date: new Date().toISOString().split('T')[0]
+          },
+          {
+            user: "Bilgilendirme",
+            rating: 3,
+            text: "www.scraperapi.com adresinden ücretsiz hesap oluşturup API key alabilirsiniz (1000 request/month free).",
+            date: new Date().toISOString().split('T')[0]
+          },
+          {
+            user: "Alternatif",
+            rating: 5,
+            text: "ScraperAPI olmadan statik HTML siteleri için 'Hızlı (Cheerio)' modunu kullanabilirsiniz.",
+            date: new Date().toISOString().split('T')[0]
+          }
+        ],
+        method: "Demo Mode (No ScraperAPI Key)",
+        warning: "ScraperAPI key bulunamadı. Demo veriler gösteriliyor."
+      });
+    }
+    
+    const html = await response.text();
+    const $ = cheerio.load(html);
+    
+    let reviews = [];
+    
+    // Basic scraping logic (same as main function but without ScraperAPI)
+    $('[class*="review"], [class*="comment"]').each((i, elem) => {
+      const text = $(elem).text().trim();
+      if (text && text.length > 30 && text.length < 1000) {
+        reviews.push({
+          user: "Kullanıcı",
+          rating: 0,
+          text: text.substring(0, 500),
+          date: new Date().toISOString().split('T')[0]
+        });
+      }
+    });
+    
+    if (reviews.length === 0) {
+      return res.status(200).json({
+        source: domain + " (Demo Mode)",
+        url,
+        reviewCount: 1,
+        reviews: [{
+          user: "Sistem",
+          rating: 0,
+          text: "Bu siteden veri çekilemedi. JavaScript tabanlı dinamik içerik kullanıyor olabilir. ScraperAPI kullanmanız önerilir.",
+          date: new Date().toISOString().split('T')[0]
+        }],
+        method: "Direct Fetch (No ScraperAPI)",
+        warning: "ScraperAPI olmadan bu siteden veri çekilemedi"
+      });
+    }
+    
+    return res.status(200).json({
+      source: domain,
+      url,
+      reviewCount: reviews.length,
+      reviews: reviews.slice(0, 20),
+      method: "Direct Fetch (No ScraperAPI Key)",
+      warning: "ScraperAPI key olmadan temel scraping yapıldı. Tam özellik için API key ekleyin."
+    });
+    
+  } catch (err) {
+    return res.status(500).json({
+      error: "Direct fetch hatası: " + err.message,
+      suggestion: "ScraperAPI key ekleyin veya 'Hızlı (Cheerio)' modunu deneyin"
     });
   }
 }
