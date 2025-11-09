@@ -1,4 +1,3 @@
-import puppeteer from 'puppeteer-core';
 import chromium from '@sparticuz/chromium';
 
 export default async function handler(req, res) {
@@ -9,6 +8,15 @@ export default async function handler(req, res) {
   
   try {
     const domain = new URL(url).hostname;
+    
+    // Try to import puppeteer dynamically
+    let puppeteer;
+    try {
+      puppeteer = await import('puppeteer-core');
+    } catch (importError) {
+      console.error("Puppeteer import failed:", importError);
+      return fallbackToCheerio(url, domain, res);
+    }
     
     // Launch headless Chrome
     browser = await puppeteer.launch({
