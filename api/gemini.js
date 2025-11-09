@@ -6,6 +6,7 @@ export default async function handler(req, res) {
   try {
     const { text } = req.body;
     const apiKey = process.env.GOOGLE_API_KEY;
+
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
       {
@@ -16,10 +17,11 @@ export default async function handler(req, res) {
         })
       }
     );
+
     const data = await response.json();
     return res.status(200).json(data);
-  } catch (err) {
-    console.error("Gemini API hatası:", err);
+  } catch (error) {
+    console.error("Gemini API hatası:", error);
     return res.status(500).json({ error: "Analiz başarısız" });
   }
 }
