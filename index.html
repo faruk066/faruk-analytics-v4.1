@@ -341,8 +341,16 @@ https://maps.google.com/place"
                     ? '/api/puppeteerScraper' 
                     : '/api/fetchReviews';
                 
-                // Fetch reviews
+                // Fetch reviews with better error handling
                 const reviewsResponse = await fetch(`${apiEndpoint}?url=${encodeURIComponent(url)}`);
+                
+                // Check content type
+                const contentType = reviewsResponse.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const text = await reviewsResponse.text();
+                    throw new Error(`API JSON dönmedi. Muhtemelen Puppeteer başlatılamadı. Response: ${text.substring(0, 200)}`);
+                }
+                
                 const reviewsData = await reviewsResponse.json();
                 
                 if (!reviewsResponse.ok) {
