@@ -1,35 +1,37 @@
 export default async function handler(req, res) {
-  const { url } = req.query;
-  if (!url) return res.status(400).json({ error: "URL parametresi gerekli" });
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Yalnızca POST desteklenir." });
+  }
 
-  // Puppeteer currently disabled on Vercel due to memory/timeout constraints
-  // Returning informative response instead
-  
-  return res.status(200).json({
-    source: "Puppeteer (Geçici Devre Dışı)",
-    url,
-    reviewCount: 3,
-    reviews: [
+  try {
+    const { url } = req.body;
+    if (!url) {
+      return res.status(400).json({ error: "Geçerli bir URL gerekli." });
+    }
+
+    console.log("Puppeteer Scraper başlatılıyor:", url);
+
+    // Puppeteer, Vercel ortamında doğrudan çalışmaz.
+    // Bu yüzden örnek veri dönüyoruz.
+    // Gerçek scraping için dış API veya proxy kullanılır.
+
+    const fakeReviews = [
       {
-        user: "Sistem Bildirimi",
-        rating: 0,
-        text: "🚧 Puppeteer scraper şu anda Vercel'de çalışmıyor. Bu, Vercel Free tier'da Chromium için yeterli memory (1024MB) ve timeout (10s) olmamasından kaynaklanıyor. Lütfen 'Hızlı (Cheerio)' modunu kullanın.",
-        date: new Date().toISOString().split('T')[0]
+        id: 1,
+        text: "Gerçekçi test verisi: Puppeteer modu aktif değil.",
+        rating: 5,
+        date: "2025-11-10",
       },
-      {
-        user: "Alternatif Çözümler",
-        rating: 0,
-        text: "✅ Çözüm 1: 'Hızlı (Cheerio)' modu statik HTML siteleri için çalışıyor.\n✅ Çözüm 2: Vercel Pro ile 3GB RAM ve 60s timeout.\n✅ Çözüm 3: Scraping API servisleri (ScraperAPI, Apify).",
-        date: new Date().toISOString().split('T')[0]
-      },
-      {
-        user: "Test Önerisi",
-        rating: 0,
-        text: "Sistem test etmek için 'Hızlı' modu ile şu URL'leri deneyin:\n• Amazon product reviews\n• Trustpilot reviews\n• TripAdvisor reviews\n\nBu siteler statik HTML kullanır ve Cheerio ile çalışır.",
-        date: new Date().toISOString().split('T')[0]
-      }
-    ],
-    method: "Puppeteer (Unavailable)",
-    warning: "Puppeteer şu anda Vercel Free tier'da kullanılamıyor. Lütfen Hızlı (Cheerio) modunu kullanın."
-  });
+    ];
+
+    return res.status(200).json({
+      message: "Puppeteer (test) yanıtı döndü.",
+      reviews: fakeReviews,
+    });
+  } catch (error) {
+    console.error("PuppeteerScraper hata:", error);
+    return res
+      .status(500)
+      .json({ error: "Puppeteer işlemi başarısız. Detay: " + error.message });
+  }
 }
