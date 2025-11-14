@@ -248,6 +248,30 @@
                 width: 100%;
             }
         }
+
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #e0e0e0;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #666;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .tab:hover {
+            color: #2a5298;
+        }
+
+        .tab.active {
+            color: #2a5298;
+            border-bottom-color: #2a5298;
+        }
     </style>
 </head>
 <body>
@@ -258,42 +282,67 @@
         </div>
         
         <div class="card">
-            <div class="input-group">
-                <label for="urlInput">🔗 İncelemek İstediğiniz URL'yi Girin:</label>
-                <textarea 
-                    id="urlInput" 
-                    placeholder="Örnek: https://www.hepsiburada.com/product-name
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('url-analysis')">URL Analizi</div>
+                <div class="tab" onclick="switchTab('google-search')">Google Arama Analizi</div>
+            </div>
+
+            <div id="url-analysis-tab">
+                <div class="input-group">
+                    <label for="urlInput">🔗 İncelemek İstediğiniz URL'yi Girin:</label>
+                    <textarea
+                        id="urlInput"
+                        placeholder="Örnek: https://www.hepsiburada.com/product-name
 https://www.yemeksepeti.com/restaurant
 https://www.trendyol.com/product
 https://maps.google.com/place"
-                ></textarea>
+                    ></textarea>
+                </div>
+
+                <div class="input-group">
+                    <label>🛠️ Scraping Yöntemi Seçin:</label>
+                    <div class="scraper-options">
+                        <label class="scraper-option active">
+                            <input type="radio" name="scraper" value="basic" checked>
+                            <span class="label">⚡ Hızlı (Cheerio)</span>
+                            <span class="description">Statik HTML - Hızlı</span>
+                        </label>
+                        <label class="scraper-option">
+                            <input type="radio" name="scraper" value="scraperapi">
+                            <span class="label">🚀 Pro (ScraperAPI)</span>
+                            <span class="description">JS render + Proxy - Güçlü</span>
+                        </label>
+                        <label class="scraper-option">
+                            <input type="radio" name="scraper" value="puppeteer">
+                            <span class="label">🌐 Beta (Puppeteer)</span>
+                            <span class="description">Test aşamasında</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button class="btn-primary" onclick="analyzeReviews()">
+                        🔍 URL'yi Analiz Et
+                    </button>
+                </div>
             </div>
-            
-            <div class="input-group">
-                <label>🛠️ Scraping Yöntemi Seçin:</label>
-                <div class="scraper-options">
-                    <label class="scraper-option active">
-                        <input type="radio" name="scraper" value="basic" checked>
-                        <span class="label">⚡ Hızlı (Cheerio)</span>
-                        <span class="description">Statik HTML - Hızlı</span>
-                    </label>
-                    <label class="scraper-option">
-                        <input type="radio" name="scraper" value="scraperapi">
-                        <span class="label">🚀 Pro (ScraperAPI)</span>
-                        <span class="description">JS render + Proxy - Güçlü</span>
-                    </label>
-                    <label class="scraper-option">
-                        <input type="radio" name="scraper" value="puppeteer">
-                        <span class="label">🌐 Beta (Puppeteer)</span>
-                        <span class="description">Test aşamasında</span>
-                    </label>
+
+            <div id="google-search-tab" style="display: none;">
+                <div class="input-group">
+                    <label for="searchInput">🔍 Google'da Aranacak Konuyu Girin:</label>
+                    <textarea
+                        id="searchInput"
+                        placeholder="Örnek: 'Faruk Tırtır' hakkında kullanıcı yorumları"
+                    ></textarea>
+                </div>
+                <div class="button-group">
+                    <button class="btn-primary" onclick="analyzeGoogleSearch()">
+                        🔍 Google'da Ara ve Analiz Et
+                    </button>
                 </div>
             </div>
             
-            <div class="button-group">
-                <button class="btn-primary" onclick="analyzeReviews()">
-                    🔍 Analiz Et
-                </button>
+            <div class="button-group" style="margin-top: 20px;">
                 <button class="btn-secondary" onclick="clearResults()">
                     🗑️ Temizle
                 </button>
@@ -304,8 +353,8 @@ https://maps.google.com/place"
             
             <div class="loading" id="loading">
                 <div class="spinner"></div>
-                <p>Yorumlar çekiliyor ve analiz ediliyor...</p>
-                <p style="font-size: 0.9em; color: #666; margin-top: 10px;">Bu işlem 5-30 saniye sürebilir</p>
+                <p>Veriler çekiliyor ve analiz ediliyor...</p>
+                <p style="font-size: 0.9em; color: #666; margin-top: 10px;">Bu işlem 10-40 saniye sürebilir</p>
             </div>
             
             <div id="result"></div>
@@ -314,6 +363,15 @@ https://maps.google.com/place"
 
     <script>
         let analysisData = null;
+
+        function switchTab(tabName) {
+            document.getElementById('url-analysis-tab').style.display = 'none';
+            document.getElementById('google-search-tab').style.display = 'none';
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+
+            document.getElementById(`${tabName}-tab`).style.display = 'block';
+            document.querySelector(`[onclick="switchTab('${tabName}')"]`).classList.add('active');
+        }
         
         // Scraper option selection
         document.querySelectorAll('.scraper-option').forEach(option => {
@@ -323,6 +381,62 @@ https://maps.google.com/place"
                 this.querySelector('input[type="radio"]').checked = true;
             });
         });
+
+        async function analyzeGoogleSearch() {
+            const query = document.getElementById('searchInput').value.trim();
+            const resultDiv = document.getElementById('result');
+            const loading = document.getElementById('loading');
+            const pdfButton = document.getElementById('pdfButton');
+
+            if (!query) {
+                resultDiv.innerHTML = '<div class="error">❌ Lütfen bir arama sorgusu girin!</div>';
+                return;
+            }
+
+            resultDiv.innerHTML = '';
+            loading.classList.add('active');
+            pdfButton.disabled = true;
+
+            try {
+                const response = await fetch('/api/googleSearch', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Google araması ve analizi başarısız oldu');
+                }
+
+                analysisData = {
+                    url: `Google Arama: "${query}"`,
+                    source: "Google Arama",
+                    reviewCount: "N/A",
+                    method: "Google Search + ScraperAPI",
+                    reviews: [],
+                    analysis: data
+                };
+
+                resultDiv.innerHTML = `
+                    <div class="result">
+                        <strong>📊 Kaynak:</strong> Google Arama<br>
+                        <strong>📝 Sorgu:</strong> ${query}<br>
+                        <hr style="margin: 15px 0; border: none; border-top: 1px solid #ddd;">
+                        <strong>🤖 AI Analizi:</strong><br><br>
+                        ${data.candidates?.[0]?.content?.parts?.[0]?.text || 'Analiz sonucu alınamadı'}
+                    </div>
+                `;
+
+                pdfButton.disabled = false;
+
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Analiz başarısız: ${error.message}</div>`;
+            } finally {
+                loading.classList.remove('active');
+            }
+        }
         
         async function analyzeReviews() {
             const url = document.getElementById('urlInput').value.trim();
@@ -426,6 +540,7 @@ Lütfen şunları yap:
         
         function clearResults() {
             document.getElementById('urlInput').value = '';
+            document.getElementById('searchInput').value = '';
             document.getElementById('result').innerHTML = '';
             document.getElementById('pdfButton').disabled = true;
             analysisData = null;
